@@ -396,9 +396,10 @@ def look_for_viable_pos(ground_truth_filename):
  
 def main():
     """
-	Proof of concept code for identifying contaminants vs SNV's in a bam file
+	Proof of concept code for identifying contaminant bases by position.
 	"""
-     
+    visualize_prob_vector_dist = True
+         
     filename = "./test.csv"
     ground_truth_filename = "./ZIKV-intrahost_True-False-Remove.csv"
     """
@@ -438,18 +439,19 @@ def main():
     flagged_read_pos = dump_dict["flagged_read_pos"]
     all_read_probs = dump_dict["all_read_probs"]
    
-    #visualize_distribution(all_read_probs, 
-    #sns.distplot(all_read_probs)
-    #plt.show()
-    print("Flagged Reads: ", len(flagged_reads))
-     
+    if visualize_prob_vector_dist:
+        sns.distplot(all_read_probs)
+        plt.show()
+    
     flagged_positions = condense_flagged_read_NT(flagged_read_NT, flagged_read_pos)   
     #go through and try and use frequency to determine SNV, using flagged reads
     temp_list = snv(position_depths, flagged_positions, bam, usable_pos, ground_truth)
-    #print(temp_list)
+    
+    #save the spreadsheet
     df = pd.DataFrame(temp_list)
     df.to_csv("test.csv")
-    #print(df)
+    
+    #calcualte T/F P/N
     manipulate_spreadsheet(filename, ground_truth_filename)
     
 
