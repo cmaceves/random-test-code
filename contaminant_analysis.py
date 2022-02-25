@@ -11,16 +11,14 @@ import matplotlib.pyplot as plt
 
 def calculate_positional_depths(bam):
     """
-    Return actual sequence matrix.
+    Return dict of every position and all alleles depths as well as
+    the total depths and reference at that position.
     """
+
     print("Calculating positional depths")
     query_names = []
     samfile = pysam.AlignmentFile(bam, "rb")
-    #print(thing.query_alignment_sequence)
-    #print(thing.get_reference_sequence())
-    #print(thing.query_alignment_qualities)
-    #print(thing.get_reference_positions())
-       
+      
     unique_headers = []
     position_dict = {}    
     for count,thing in enumerate(samfile): 
@@ -30,10 +28,7 @@ def calculate_positional_depths(bam):
         for (pos, letter, ref, qual,test) in zip(thing.get_reference_positions(), thing.query_alignment_sequence, thing.get_reference_sequence(), thing.query_alignment_qualities, thing.get_aligned_pairs(matches_only=True)):        
             if qual < 20:
                 continue
-            #sometimes we have misalignments
-            #if pos == 6057:    
-            #    print(pos, letter, ref, qual, test)
-            
+           
             #if we've seen this position before
             if pos-1 in position_dict:
                 #check if we've seen this nuc before
@@ -70,8 +65,8 @@ def remove_low_depth_positions(position_dict):
 
 def calculate_read_probability(position_depths, bam, usable_pos):
     """
-    Calculates the probabilites per read and then creates
-    a curve to represent the distribution of read probabilities.
+    Calculates the probabilites per read and then find the
+    lowest 5% of all reads, returning it as a dict.
     
     Parameters
     ----------
@@ -398,47 +393,47 @@ def main():
     """
 	Proof of concept code for identifying contaminant bases by position.
 	"""
+    #options for various calculations
     visualize_prob_vector_dist = True
-         
+    calc_pos_depths = True
+    flag_reads = True
+
+    #output filename        
     filename = "./test.csv"
     ground_truth_filename = "./ZIKV-intrahost_True-False-Remove.csv"
-    """
-    manipulate_spreadsheet(filename, ground_truth_filename)
-    sys.exit(0)
-    """
-    ground_truth_filename = "./ZIKV-intrahost_True-False-Remove.csv"
+
     usable_pos,ground_truth = look_for_viable_pos(ground_truth_filename)
     
     bam = "./bam/primalseq_mix10_repA.sorted.bam"
     #bam = "./bam/spike_in_metagenomics_mix10_repA.sorted.bam"
  
-    """ 
-    position_depths = calculate_positional_depths(bam) 
-    with open('pos_depths.json','w') as jfile:
-        json.dump(position_depths, jfile)
-    sys.exit(0) 
-    """
+    if calc_pos_depths:
+        position_depths = calculate_positional_depths(bam) 
+        with open('pos_depths.json','w') as jfile:
+            json.dump(position_depths, jfile)
+        
+    else: 
+        with open('pos_depths.json', 'r') as jfile:
+            position_depths = json.load(jfile)
     
-    with open('pos_depths.json', 'r') as jfile:
-        position_depths = json.load(jfile)
-    """ 
-    #using probabilties flag reads as potential contaminants
-    flagged_reads, flagged_read_pos, flagged_read_NT, all_read_probs= calculate_read_probability(position_depths, bam, usable_pos)
-    dump_dict = {"flagged_reads": flagged_reads, "flagged_read_pos":flagged_read_pos, "flagged_read_NT":flagged_read_NT, \
-    "all_read_probs": all_read_probs}      
-    
-    with open("flagged_depths.json", "w") as jfile:
-        json.dump(dump_dict, jfile)
-    sys.exit(0)
-    """
-    with open("flagged_depths.json", "r") as jfile:
-        dump_dict = json.load(jfile)
-    
-    flagged_reads = dump_dict["flagged_reads"]
-    flagged_read_NT = dump_dict["flagged_read_NT"]
-    flagged_read_pos = dump_dict["flagged_read_pos"]
-    all_read_probs = dump_dict["all_read_probs"]
-   
+    if flag_reads:   
+        #using probabilties flag reads as potential contaminants
+        flagged_reads, flagged_read_pos, flagged_read_NT, all_read_probs= calculate_read_probability(position_depths, bam, usable_pos)
+        dump_dict = {"flagged_reads": flagged_reads, "flagged_read_pos":flagged_read_pos, "flagged_read_NT":flagged_read_NT, \
+        "all_read_probs": all_read_probs}      
+        
+        with open("flagged_depths.json", "w") as jfile:
+            json.dump(dump_dict, jfile)
+        
+    else:
+        with open("flagged_depths.json", "r") as jfile:
+            dump_dict = json.load(jfile)
+        
+        flagged_reads = dump_dict["flagged_reads"]
+        flagged_read_NT = dump_dict["flagged_read_NT"]
+        flagged_read_pos = dump_dict["flagged_read_pos"]
+        all_read_probs = dump_dict["all_read_probs"]
+       
     if visualize_prob_vector_dist:
         sns.distplot(all_read_probs)
         plt.show()
